@@ -295,6 +295,61 @@
     .hidden {
         display: none;
     }
+    
+    #player-container {
+        width: 100%;
+        padding: 20px;
+        color: white;
+    }
+    
+    #current-track {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    #track-artwork {
+        width: 80px;
+        height: 80px;
+        border-radius: 4px;
+        margin-right: 15px;
+    }
+    
+    #track-info {
+        flex-grow: 1;
+    }
+    
+    #track-name {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    
+    #track-artist {
+        font-size: 14px;
+        color: #b3b3b3;
+    }
+    
+    #player-controls {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+    }
+    
+    #player-controls button {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 10px;
+        border-radius: 50%;
+        transition: all 0.2s;
+    }
+    
+    #player-controls button:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
     </style>
 </head>
 <body>
@@ -309,6 +364,20 @@
         <button onclick="loginWithSpotify()" class="spotify-login-btn">
             Login with Spotify
         </button>
+        <div id="player-container" class="hidden">
+            <div id="current-track">
+                <img id="track-artwork" src="" alt="Album Art" />
+                <div id="track-info">
+                    <div id="track-name"></div>
+                    <div id="track-artist"></div>
+                </div>
+            </div>
+            <div id="player-controls">
+                <button onclick="previousTrack()">⏮</button>
+                <button id="play-button" onclick="togglePlay()">▶</button>
+                <button onclick="nextTrack()">⏭</button>
+            </div>
+        </div>
     </div>
 
 
@@ -348,7 +417,7 @@
     let spotifyToken = null;
 
     function loginWithSpotify() {
-        const scope = 'user-read-private user-read-email playlist-read-private streaming user-read-playback-state user-modify-playback-state';
+        const scope = 'user-read-private user-read-email playlist-read-private streaming user-read-playback-state user-modify-playback-state user-read-currently-playing';
         const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&scope=${encodeURIComponent(scope)}`;
         window.location.href = authUrl;
     }
@@ -573,6 +642,55 @@ function modifyPlayerScore(playerName, value) {
     function toggleSpotifyPanel() {
         const panel = document.getElementById('spotify-panel');
         panel.classList.toggle('open');
+    }
+
+    let player;
+    let deviceId;
+    let isPlaying = false;
+
+    window.onSpotifyWebPlaybackSDKReady = () => {
+        if (!spotifyToken) return;
+
+        player = new Spotify.Player({
+            name: 'Guess the Song Web Player',
+            getOAuthToken: cb => { cb(spotifyToken); },
+            volume: 0.5
+        });
+
+        player.addListener('ready', ({ device_id }) => {
+            console.log('Ready with Device ID', device_id);
+            deviceId = device_id;
+            document.getElementById('player-container').classList.remove('hidden');
+        });
+
+        player.addListener('player_state_changed', state => {
+            if (!state) return;
+            
+            const currentTrack = state.track_window.current_track;
+            document.getElementById('track-artwork').src = currentTrack.album.images[0].url;
+            document.getElementById('track-name').textContent = currentTrack.name;
+            document.getElementById('track-artist').textContent = currentTrack.artists[0].name;
+            
+            isPlaying = !state.paused;
+            document.getElementById('play-button').textContent = isPlaying ? '⏸' : '▶';
+        });
+
+        player.connect();
+    };
+
+    function togglePlay() {
+        if (!player) return;
+        player.togglePlay();
+    }
+
+    function nextTrack() {
+        if (!player) return;
+        player.nextTrack();
+    }
+
+    function previousTrack() {
+        if (!player) return;
+        player.previousTrack();
     }
 
     window.onload = () => {

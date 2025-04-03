@@ -115,7 +115,7 @@
             display: none;
         }
 
-        #spotify-panel {
+        #leaderboard-panel {
             position: fixed;
             top: 0;
             right: 0;
@@ -125,18 +125,39 @@
             overflow-y: auto;
             transition: transform 0.3s ease;
             transform: translateX(100%); /* Initially hidden */
+            padding: 20px;
         }
 
-        #spotify-panel.open {
+        #leaderboard-panel.open {
             transform: translateX(0);
         }
-        .spotify-trigger{
-            background-color: #1DB954;
+
+        #leaderboard-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #444;
             color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
+        }
+
+        .leaderboard-item:nth-child(1) {
+            background-color: #FFD700;
+            color: black;
+        }
+
+        .leaderboard-item:nth-child(2) {
+            background-color: #C0C0C0;
+            color: black;
+        }
+
+        .leaderboard-item:nth-child(3) {
+            background-color: #CD7F32;
+            color: black;
         }
 
 
@@ -169,18 +190,15 @@
 
         <button class="spotify-trigger" data-spotify-uri="spotify:track:7ouMYWpwJ422jRcDASZB7P">Play Song 1</button>
         <button class="spotify-trigger" data-spotify-uri="spotify:track:6f1mQ9aO0bG8yL72P8d0wQ">Play Song 2</button>
-    <button onclick="toggleSpotifyPanel()">Toggle Spotify Panel</button>
+    <button onclick="toggleLeaderboard()">Toggle Leaderboard</button>
 
     </div>
 
 
-    <div id="spotify-panel">
-        <button onclick="logout()">Logout</button>
-        <div class="login-message">Connect your Spotify account to access music</div>
-        <a href="#" class="spotify-login-btn">Connect with Spotify</a>
+    <div id="leaderboard-panel">
+        <h2 style="color: white; text-align: center;">Leaderboard</h2>
+        <ul id="leaderboard-list"></ul>
     </div>
-
-    <script defer src="https://sdk.scdn.co/spotify-player.js" integrity="sha384-0cZF2Y+RTJEhXHQV7QnZqgRMKvKHkwhU+su2pF9QqGrYg9IhpAIXXSlKXhbYFzEO" crossorigin="anonymous"></script>
     <script>
         let spotifyToken;
         let isAuthenticated = false;
@@ -436,19 +454,38 @@ function modifyPlayerScore(playerName, value) {
 
 
     // No IP checking or access control needed
-    function toggleSpotifyPanel() {
-        const panel = document.getElementById('spotify-panel');
+    function toggleLeaderboard() {
+        const panel = document.getElementById('leaderboard-panel');
         panel.classList.toggle('open');
     }
 
-    let player;
-    let deviceId;
-    let isPlaying = false;
+    function updateLeaderboard() {
+        const players = Array.from(document.querySelectorAll('.player')).map(player => ({
+            name: player.querySelector('span').textContent,
+            score: parseInt(player.querySelector('div span').textContent)
+        }));
+        
+        players.sort((a, b) => b.score - a.score);
+        
+        const leaderboardList = document.getElementById('leaderboard-list');
+        leaderboardList.innerHTML = players.map(player => 
+            `<li class="leaderboard-item">
+                <span>${player.name}</span>
+                <span>${player.score}</span>
+            </li>`
+        ).join('');
+    }
 
-    load
-    window.addEventListener('load', handleSpotifyCallback);
-    // Initialize Spotify embed
-    window.onSpotifyIframeApiReady = (IFrameAPI) => {
+    // Update leaderboard whenever scores change
+    function modifyPlayerScore(playerName, value) {
+        const scoreElement = document.getElementById(`score-${playerName}`);
+        let currentScore = parseInt(scoreElement.innerText);
+        currentScore += value;
+        scoreElement.innerText = currentScore;
+        updateLeaderboard();
+    }
+
+    window.onload = () => {
         const element = document.getElementById('embed-iframe');
         const options = {
             width: '100%',

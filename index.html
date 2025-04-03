@@ -300,6 +300,37 @@
         width: 100%;
         padding: 20px;
         color: white;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    #spotify-panel {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding-top: 80px;
+    }
+
+    .spotify-search {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 20px;
+        border: none;
+        background: #333;
+        color: white;
+    }
+
+    .spotify-playlist {
+        width: 100%;
+        margin-top: 20px;
+        max-height: 300px;
+        overflow-y: auto;
+        background: #282828;
+        border-radius: 8px;
+        padding: 10px;
     }
     
     #current-track {
@@ -365,6 +396,8 @@
             Login with Spotify
         </button>
         <div id="player-container" class="hidden">
+            <input type="text" class="spotify-search" placeholder="Search for songs..." onkeyup="searchSpotify(this.value)">
+            <div class="spotify-playlist" id="search-results"></div>
             <div id="current-track">
                 <img id="track-artwork" src="" alt="Album Art" />
                 <div id="track-info">
@@ -377,7 +410,7 @@
                 <button id="play-button" onclick="togglePlay()">▶</button>
                 <button onclick="nextTrack()">⏭</button>
             </div>
-            <button onclick="logout()" class="spotify-login-btn" style="background: #e74c3c;">Logout</button>
+            <button onclick="logout()" class="spotify-login-btn" style="background: #e74c3c; margin-top: auto;">Logout</button>
         </div>
     </div>
 
@@ -692,6 +725,51 @@ function modifyPlayerScore(playerName, value) {
     function previousTrack() {
         if (!player) return;
         player.previousTrack();
+    }
+
+    async function searchSpotify(query) {
+        if (!query || !spotifyToken) return;
+        
+        try {
+            const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=10`, {
+                headers: {
+                    'Authorization': `Bearer ${spotifyToken}`
+                }
+            });
+            
+            const data = await response.json();
+            const resultsDiv = document.getElementById('search-results');
+            resultsDiv.innerHTML = data.tracks.items.map(track => `
+                <div class="track-item" onclick="playTrack('${track.uri}')">
+                    <img src="${track.album.images[2].url}" style="width: 40px; height: 40px;">
+                    <div>
+                        <div>${track.name}</div>
+                        <div style="font-size: 0.8em; color: #888;">${track.artists[0].name}</div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Search error:', error);
+        }
+    }
+
+    async function playTrack(uri) {
+        if (!deviceId) return;
+        
+        try {
+            await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${spotifyToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    uris: [uri]
+                })
+            });
+        } catch (error) {
+            console.error('Playback error:', error);
+        }
     }
 
     function logout() {

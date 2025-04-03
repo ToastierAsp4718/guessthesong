@@ -377,13 +377,15 @@
             }
         }
 
+        // Combined window.onload handler
         window.onload = () => {
+            // Hide loading screen
             const loadingElement = document.getElementById('loading');
             if (loadingElement) {
                 loadingElement.style.display = 'none';
             }
 
-            // If authenticated, hide login button
+            // Handle Spotify authentication
             if (localStorage.getItem('spotify_token')) {
                 const loginBtn = document.querySelector('.spotify-login-btn');
                 const loginMsg = document.querySelector('.login-message');
@@ -395,8 +397,16 @@
                     loginMsg.textContent = 'Connected to Spotify';
                 }
             }
-        };
 
+            // Start the animation
+            animate();
+
+            // Show content
+            const content = document.getElementById('content');
+            if (content) {
+                content.style.opacity = '1';
+            }
+        };
 
         // --- PLAYER AND SCORE FUNCTIONALITY ---
 // Modify the total score

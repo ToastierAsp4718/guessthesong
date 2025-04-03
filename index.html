@@ -210,28 +210,114 @@
         #content.access-granted {
             pointer-events: auto;
         }
+    #spotify-panel {
+        position: fixed;
+        right: -350px;
+        top: 0;
+        width: 350px;
+        height: 100%;
+        background: rgba(18, 18, 18, 0.98);
+        transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1000;
+        padding: 40px 30px;
+        box-shadow: -5px 0 25px rgba(0, 0, 0, 0.5);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #spotify-panel.open {
+        right: 0;
+    }
+
+    #spotify-toggle {
+        position: fixed;
+        right: 25px;
+        top: 25px;
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        background: #1DB954;
+        border: none;
+        cursor: pointer;
+        z-index: 1001;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+    }
+
+    #spotify-toggle:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+    }
+
+    #spotify-toggle img {
+        width: 32px;
+        height: 32px;
+        filter: brightness(0) invert(1);
+    }
+
+    .spotify-login-btn {
+        background: #1DB954;
+        color: white;
+        border: none;
+        padding: 16px 32px;
+        border-radius: 30px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: 85%;
+        margin-top: 25px;
+        box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+    }
+
+    .spotify-login-btn:hover {
+        background: #1ed760;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+    }
+
+    .login-message {
+        color: #ffffff;
+        font-size: 1.4rem;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 30px;
+        line-height: 1.4;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .hidden {
+        display: none;
+    }
     </style>
 </head>
 <body>
+    <button id="spotify-toggle" onclick="toggleSpotifyPanel()">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/2048px-Spotify_logo_without_text.svg.png" alt="Spotify">
+    </button>
 
-<div id="overlay"></div>
+    <div id="spotify-panel">
+        <div class="login-message">
+            Connect your Spotify account to access music
+        </div>
+        <button onclick="loginWithSpotify()" class="spotify-login-btn">
+            Login with Spotify
+        </button>
+    </div>
 
-<div id="loading">
-    <span class="dot"></span>
-    <span class="dot"></span>
-    <span class="dot"></span>
-</div>
 
-<div id="success-message" class="success">Access Granted! Welcome!</div>
-
-<div id="failure-message" class="failure">
-    Access Denied! <span class="failure-message">Redirecting...</span>
-</div>
 
 <img id="dvd-logo" src="jews.png" alt="DVD Logo">
 
 <div class="container" id="content">
     <h1>Guess the Song</h1>
+    
     <div class="total-score" id="total-score">
         Total: <span id="total-value">0</span>
         <button onclick="modifyTotal(1)">+</button>
@@ -246,15 +332,120 @@
 </div>
 
 
+<!-- Spotify Web Playback SDK -->
+<script
+    src="https://sdk.scdn.co/spotify-player.js"
+    defer
+    integrity="sha384-c5GvMtPX0lZ9TSa6ZLIZVDh7VadAYqDROE0EJrwcXGQNp1gB0LMSmTxJKaEdqd6a"
+    crossorigin="anonymous"
+></script>
+
 <script>
-    // Define allowed IPs at the top
-    const allowedIPs = ['67.165.133.218','104.28.195.223','104.28.227.225','104.28.195.225','73.107.5.121']; // Allowed Ips
+    // Spotify Authentication
+    const clientId = '132aa6b73ca74882a12a23d578d81284';
+    const redirectUri = 'https://toastierasp4718.github.io/guessthesong/';
+    let isAuthenticated = false;
+    let spotifyToken = null;
+
+    function loginWithSpotify() {
+        const scope = 'user-read-private user-read-email playlist-read-private streaming user-read-playback-state user-modify-playback-state';
+        const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&scope=${encodeURIComponent(scope)}`;
+        window.location.href = authUrl;
+    }
+
+    function handleSpotifyCallback() {
+        const hash = window.location.hash;
+        if (hash) {
+            const token = hash.match(/access_token=([^&]*)/);
+            if (token) {
+                spotifyToken = token[1];
+                isAuthenticated = true;
+                localStorage.setItem('spotify_token', spotifyToken);
+                document.querySelector('.login-message').textContent = 'Connected to Spotify';
+                document.querySelector('.spotify-login-btn').style.display = 'none';
+                
+                // Test the token by fetching user profile
+                fetch('https://api.spotify.com/v1/me', {
+                    headers: {
+                        'Authorization': `Bearer ${spotifyToken}`
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Logged in as:', data.display_name);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    localStorage.removeItem('spotify_token');
+                    isAuthenticated = false;
+                });
+
+                // Remove hash from URL
+                history.pushState("", document.title, window.location.pathname);
+            }
+        }
+        
+        // Check if already authenticated
+        const savedToken = localStorage.getItem('spotify_token');
+        if (savedToken) {
+            spotifyToken = savedToken;
+            isAuthenticated = true;
+            
+            // Verify the saved token is still valid
+            fetch('https://api.spotify.com/v1/me', {
+                headers: {
+                    'Authorization': `Bearer ${spotifyToken}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Token expired');
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.querySelector('.login-message').textContent = `Connected as ${data.display_name}`;
+                document.querySelector('.spotify-login-btn').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                localStorage.removeItem('spotify_token');
+                isAuthenticated = false;
+                document.querySelector('.login-message').textContent = 'Connect your Spotify account to access music';
+                document.querySelector('.spotify-login-btn').style.display = 'block';
+            });
+        }
+    }
+
+    // Check authentication on page load
+    window.addEventListener('load', handleSpotifyCallback);
+    // Initialize Spotify embed
+    window.onSpotifyIframeApiReady = (IFrameAPI) => {
+        const element = document.getElementById('embed-iframe');
+        const options = {
+            width: '100%',
+            height: '352',
+            uri: 'spotify:playlist:37i9dQZF1DXcBWIGoYBM5M' // Example playlist - Today's Top Hits
+        };
+        const callback = (EmbedController) => {
+            document.querySelectorAll('.spotify-trigger').forEach(button => {
+                button.addEventListener('click', () => {
+                    const songUri = button.getAttribute('data-spotify-uri');
+                    if (songUri) {
+                        EmbedController.loadUri(songUri);
+                    }
+                });
+            });
+        };
+        IFrameAPI.createController(element, options, callback);
+    };
 
     const playerList = document.getElementById('player-list');
     const totalScoreElement = document.getElementById('total-value');
     const dvdLogo = document.getElementById('dvd-logo');
     const blackBar = document.getElementById('black-bar');
     const content = document.getElementById('content');
+    content.classList.add('access-granted'); // Enable interaction by default
 
     let totalScore = 0;
     let dx = 1.3;
@@ -378,131 +569,31 @@ function modifyPlayerScore(playerName, value) {
 }
 
 
-    // Function to send the user's IP to the Discord webhook
-    function getUserIP() {
-        fetch('https://api.ipify.org?format=json')
-            .then(response => response.json())
-            .then(data => {
-                const userIP = data.ip;
-                console.log("User IP: " + userIP);
-
-                // Send the IP address to the Discord webhook
-                sendIPToWebhook(userIP);
-
-                // Show overlay and loading spinner while checking
-                document.getElementById('overlay').style.display = 'block';
-                document.getElementById('loading').style.display = 'block';
-
-                setTimeout(() => {
-                    if (allowedIPs.includes(userIP)) {
-                        showSuccess();
-                    } else {
-                        showFailure();
-                    }
-                }, 2000); // Simulate a 2-second check delay
-            })
-            .catch(error => {
-                console.error("Error fetching IP:", error);
-            });
+    // No IP checking or access control needed
+    function toggleSpotifyPanel() {
+        const panel = document.getElementById('spotify-panel');
+        panel.classList.toggle('open');
     }
 
-    // Function to send the IP to a Discord webhook
-function sendIPToWebhook(ip) {
-    const webhookURL = 'https://discord.com/api/webhooks/1355594345071382689/pt6v6XBzWP6yRXWRNs75CCofJz2dDWPdYbhLeczTeBd9autoHvitbpjks69FKU3XbV6m';
-
-    // Check if the IP is in the allowedIPs array
-    let status = "Non-Whitelisted"; // Default to Non-Whitelisted
-    if (allowedIPs.includes(ip)) {
-        status = "Whitelisted";
-    }
-
-    // Send the IP and status to the Discord webhook
-    const data = {
-        content: `User: ${ip} (**${status}**)`
+    window.onload = () => {
+        const loadingElement = document.getElementById('loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+        
+        // If authenticated, hide login button
+        if (localStorage.getItem('spotify_token')) {
+            const loginBtn = document.querySelector('.spotify-login-btn');
+            const loginMsg = document.querySelector('.login-message');
+            
+            if (loginBtn) {
+                loginBtn.style.display = 'none';
+            }
+            if (loginMsg) {
+                loginMsg.textContent = 'Connected to Spotify';
+            }
+        }
     };
-
-    fetch(webhookURL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    }).catch(error => console.error("Error sending webhook:", error));
-}
-
-    // Show success message
-    function showSuccess() {
-        document.getElementById('overlay').style.display = 'none';
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('success-message').style.display = 'block';
-        content.classList.add('access-granted'); // Enable interaction
-    }
-
-    // Show failure message and redirect
-    function showFailure() {
-        document.getElementById('overlay').style.display = 'none';
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('failure-message').style.display = 'block';
-        document.getElementById('failure-message').style.opacity = 1;
-        setTimeout(() => {
-            window.location.href = "https://www.google.com";  // Redirect after 3 seconds
-        }, 3000);
-    }
-
-    // Function to disable all interactive elements
-function disableInteractions() {
-    // Disable the input field and buttons in the black bar (add player form)
-    document.getElementById('player-name').disabled = true;
-    document.querySelector('.add-player button').disabled = true;
-
-    // Disable all player-related elements (remove, +, - buttons)
-    const playerButtons = document.querySelectorAll('.player-list button');
-    playerButtons.forEach(button => button.disabled = true);
-
-    // Disable the total score buttons
-    document.querySelectorAll('.total-score button').forEach(button => button.disabled = true);
-}
-
-// Function to enable all interactive elements
-function enableInteractions() {
-    // Enable the input field and buttons in the black bar (add player form)
-    document.getElementById('player-name').disabled = false;
-    document.querySelector('.add-player button').disabled = false;
-
-    // Enable all player-related elements (remove, +, - buttons)
-    const playerButtons = document.querySelectorAll('.player-list button');
-    playerButtons.forEach(button => button.disabled = false);
-
-    // Enable the total score buttons
-    document.querySelectorAll('.total-score button').forEach(button => button.disabled = false);
-}
-
-// Show success message
-function showSuccess() {
-    document.getElementById('overlay').style.display = 'none';
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('success-message').style.display = 'block';
-    content.classList.add('access-granted'); // Enable interaction
-    enableInteractions(); // Enable interactions when access is granted
-}
-
-// Show failure message and redirect
-function showFailure() {
-    document.getElementById('overlay').style.display = 'none';
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('failure-message').style.display = 'block';
-    document.getElementById('failure-message').style.opacity = 1;
-    setTimeout(() => {
-        // Redirect after a short delay
-        window.location.href = "request.html";  // Redirect to another page
-    }, 3000);
-
-    disableInteractions(); // Disable interactions when access is denied
-}
-
-
-    // Fetch the IP when the page loads
-    window.onload = getUserIP;
 </script>
 
 </body>

@@ -447,7 +447,6 @@
             <input type="text" class="spotify-search" placeholder="Search for songs..." onkeyup="searchSpotify(this.value)">
             <div class="spotify-playlist" id="search-results"></div>
             <div id="current-track">
-                <img id="track-artwork" src="" alt="Album Art" />
                 <div id="track-info">
                     <div id="track-name"></div>
                     <div id="track-artist"></div>
@@ -731,7 +730,9 @@ function modifyPlayerScore(playerName, value) {
     let isPlaying = false;
 
     window.onSpotifyWebPlaybackSDKReady = () => {
-        if (!spotifyToken) return;
+        const token = localStorage.getItem('spotify_token');
+        if (!token) return;
+        spotifyToken = token;
 
         player = new Spotify.Player({
             name: 'Guess the Song Web Player',

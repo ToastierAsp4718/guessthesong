@@ -377,6 +377,7 @@
                 <button id="play-button" onclick="togglePlay()">▶</button>
                 <button onclick="nextTrack()">⏭</button>
             </div>
+            <button onclick="logout()" class="spotify-login-btn" style="background: #e74c3c;">Logout</button>
         </div>
     </div>
 
@@ -691,6 +692,17 @@ function modifyPlayerScore(playerName, value) {
     function previousTrack() {
         if (!player) return;
         player.previousTrack();
+    }
+
+    function logout() {
+        localStorage.removeItem('spotify_token');
+        isAuthenticated = false;
+        document.querySelector('.login-message').textContent = 'Connect your Spotify account to access music';
+        document.querySelector('.spotify-login-btn').style.display = 'block';
+        document.getElementById('player-container').classList.add('hidden');
+        if (player) {
+            player.disconnect();
+        }
     }
 
     window.onload = () => {
